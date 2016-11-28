@@ -27,49 +27,19 @@
     <p class="home"><a href="/">Home</a></p>
     <p class="home"><a href="/blog.html">Blog&nbsp&nbsp&nbsp</a></p>
     <p class="post-meta">Nov 28th, 2016</p>
-    <h4 class="post-title">Combined State and Parameter Estimation</h4>
+    <h3 class="post-title">Combined State and Parameter Estimation</h3>
   </header>
 
   <article class="post-content">
-    <p>The distinction between <em>models</em> and <em>inference procedures</em> is central to most
-introductory presentations of artificial intelligence.  For example: HMMs are a
-class of model; the Viterbi algorithm is one associated inference procedure,
-the forward–backward algorithm is another, and particle filtering is a third.</p>
-
-<p>Many people describe (and presumably think of) neural networks as a class of
-models. I want to argue that this view is misleading, and that it is more useful
-to think of neural networks as hopelessly entangled model–inference pairs.
-“Model–inference pair” is a mouthful, and there doesn’t seem to be good
-existing shorthand, so I will henceforth refer to such objects as “monferences”.
-My claim is that we should think of a neural network as an example of a
-monference. (An implementation of the Viterbi algorithm, equipped with the
-parameters of some <em>fixed</em> HMM, is also a monference.)</p>
-
-<p>I’m about to cite a bunch of existing papers that follow naturally from the
-neural-nets-as-monferences perspective—it seems like this idea is already
-obvious to a lot of people. But I don’t think it’s been given a name or a
-systematic treatment, and I hope others will find what follows as useful
-(or at least as deconfounding) as I did.</p>
+    <p>Problems of particle filtering, sample impoverishemnt </p>
 
 <hr />
-
-<p>What are the consequences of regarding a neural net as a <em>model</em>?
-A personal example is illustrative:</p>
-
-<p>The first time I saw a recurrent neural network, I thought “this is an
-interesting model with a broken inference procedure”. A recurrent net looks like
-an HMM. An HMM has a discrete hidden state, and a recurrent net has a
-vector-valued hidden state.  When we do inference in an HMM, we maintain a
-distribution over hidden states consistent with the output, but when we do
-inference in a recurrent net, we maintain only a single vector—a single
-hypothesis, and a greedy inference procedure. Surely things would be better if
-there were some way of modeling uncertainty? Why not treat RNN inference like
-Kalman filtering?</p>
-
-<p>This complaint is <em>wrong</em>. Our goal in the remainder of this post is to explore
-why it’s wrong.</p>
+	<p>Extended Parameter Filter</p>	
 
 <hr />
+	<p>Assumed Parameter Filter</p>	
+<hr>
+	<p>Ancestral Path Degeneracy</p>
 
 
   </article>
