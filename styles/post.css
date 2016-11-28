@@ -94,3 +94,12 @@ img {
   padding: 18px;
   margin: 54px 0;
 }
+
+.post-meta {
+  color: #999;
+}
+
+.home {
+  float: right;
+  margin-top: 0;
+}
