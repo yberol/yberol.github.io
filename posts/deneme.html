@@ -22,275 +22,59 @@
 
     <div class="post">
 
-  <header class="post-header">
-    <p class="home"><a href="/">Home</a></p>
-    <p class="post-meta">Nov 28, 2016</p>
-    <h1 class="post-title">Combined State and Parameter Estimation</h1>
-  </header>
+      <header class="post-header">
+        <h1>Quantifying Hacker News with 50 days of data</h1>
+        <p class="meta">Nov 27, 2013</p>
+      </header>
 
-  <article class="post-content">
-    <p>The distinction between <em>models</em> and <em>inference procedures</em> is central to most
-introductory presentations of artificial intelligence.  For example: HMMs are a
-class of model; the Viterbi algorithm is one associated inference procedure,
-the forward–backward algorithm is another, and particle filtering is a third.</p>
+      <article class="post-content">
+      <h3 id="quantifying-hacker-news">Quantifying Hacker News</h3>
+    <p>I thought it would be fun to analyze the activity on one of my favorite sources of interesting links and information, <a href="https://news.ycombinator.com/">Hacker News</a>. My source of data is a script I’ve set up some time in August that downloads HN (the Front page and the New stories page) every minute. We will be interested in visualizing the stories as they get upvoted during the day, figuring out which domains/users are most popular, what topics are most popular, and the best time to post a story. I’m making all my data and code (Python data collection scripts + IPython Notebook for analysis) available in case you’d like to carry out a similar analysis.</p>
 
-<p>Many people describe (and presumably think of) neural networks as a class of
-models. I want to argue that this view is misleading, and that it is more useful
-to think of neural networks as hopelessly entangled model–inference pairs.
-“Model–inference pair” is a mouthful, and there doesn’t seem to be good
-existing shorthand, so I will henceforth refer to such objects as “monferences”.
-My claim is that we should think of a neural network as an example of a
-monference. (An implementation of the Viterbi algorithm, equipped with the
-parameters of some <em>fixed</em> HMM, is also a monference.)</p>
+    <h3 id="data-collection-protocol">Data collection protocol</h3>
+    <p>I set up a very simple python script that scrapes the HN <strong>front page</strong> and the <strong>new stories page</strong> every minute. A single day of data begins at 4am (PST) and ends at 4am the next day. The .html files are saved compressed as gzipped pickles and one day occupies roughly 10mb in this format. I had bring down my machine for a few days a few times so there are some gaps in the data, but in the end we get 47 days of data from period between August 22 and October 30.</p>
 
-<p>I’m about to cite a bunch of existing papers that follow naturally from the
-neural-nets-as-monferences perspective—it seems like this idea is already
-obvious to a lot of people. But I don’t think it’s been given a name or a
-systematic treatment, and I hope others will find what follows as useful
-(or at least as deconfounding) as I did.</p>
+    <h3 id="raw-html-data-parsing">Raw HTML data parsing</h3>
+    <p>The parsing Python script uses <strong>BeautifulSoup</strong> to convert the raw HTML into a more structured JSON. This script was by the way by no means simple to write – HN is based on unstructured tables and I had to discover many strange edge cases in its behavior along the way. At the end I ended up with a 100-line ugliest-parsing-function-ever (really, I’m not proud of it) but it works and outputs something like the following for a single story at a specific snapshot:</p>
 
-<hr />
+    <div class="highlighter-rouge"><pre class="highlight"><code><span class="p">{</span><span class="w">
+    </span><span class="err">'domain':</span><span class="w"> </span><span class="err">u'play.google.com',</span><span class="w"> </span><span class="err">'title':</span><span class="w"> </span><span class="err">u'Nexus</span><span class="w"> </span><span class="err">5',</span><span class="w"> 
+    </span><span class="err">'url':</span><span class="w"> </span><span class="err">u'https://play.google.com/store/devices/details?id=nexus_5_black_16gb',</span><span class="w"> 
+    </span><span class="err">'num_comments':</span><span class="w"> </span><span class="err">42,</span><span class="w"> </span><span class="err">'rank':</span><span class="w"> </span><span class="err">1,</span><span class="w"> </span><span class="err">'points':</span><span class="w"> </span><span class="err">65,</span><span class="w"> 
+    </span><span class="err">'user':</span><span class="w"> </span><span class="err">u'sonier',</span><span class="w"> </span><span class="err">'minutes_ago':</span><span class="w"> </span><span class="err">39,</span><span class="w"> </span><span class="err">'id':</span><span class="w"> </span><span class="err">u'6648519'</span><span class="w">
+    </span><span class="p">}</span><span class="w">
+    </span></code></pre>
+    </div>
 
-<p>What are the consequences of regarding a neural net as a <em>model</em>?
-A personal example is illustrative:</p>
+    <p>We get 60 such entries every minute (30 for front page and 30 for new page) and these are again all saved to disk. We are now ready to bring out the IPython Notebook and get to the juicy analysis!</p>
 
-<p>The first time I saw a recurrent neural network, I thought “this is an
-interesting model with a broken inference procedure”. A recurrent net looks like
-an HMM. An HMM has a discrete hidden state, and a recurrent net has a
-vector-valued hidden state.  When we do inference in an HMM, we maintain a
-distribution over hidden states consistent with the output, but when we do
-inference in a recurrent net, we maintain only a single vector—a single
-hypothesis, and a greedy inference procedure. Surely things would be better if
-there were some way of modeling uncertainty? Why not treat RNN inference like
-Kalman filtering?</p>
+    <h3 id="the-analysis-detailed-analysis">The Analysis: Detailed analysis</h3>
 
-<p>This complaint is <em>wrong</em>. Our goal in the remainder of this post is to explore
-why it’s wrong.</p>
+    <p>Head over to the IPython Notebook <a href="http://cs.stanford.edu/people/karpathy/hn_analysis.html">rendered as HTML</a> for the analysis:</p>
 
-<hr />
+    <p><a href="http://cs.stanford.edu/people/karpathy/hn_analysis.html">
+      <img class="aligncenter size-full wp-image-584" title="hn" src="/assets/hn.jpg" width="100%" />
+    </a></p>
 
-<p>Put simply, there is no reason to regard the hidden state of a
-recurrent network as a single hypothesis. After all, a sufficiently large hidden
-vector can easily represent the whole table of probabilities we use in the
-forward algorithm—or even represent the state of a particle filter. The
-analogy “HMM hidden state = RNN hidden state” is bad; a better analogy is “HMM
-<em>decoder</em> state = RNN hidden state”.</p>
+    <p>Note: I had the entire dataset and .ipynb Ipython Notebook source available for download but recently took it down to save space on my host (sorry).</p>
 
-<!--
-This _temptation to form false analogies_ is especially appealing to those of us
-who grew up in the graphical models culture, and are accustomed to inference
-design problems that look algorithmic. But it's only one of a variety of failure
-modes associated with the neural-nets-as-models perspective. Another
-failure mode seems to preferentially afflict people from the neural nets
-culture, who have never needed to think about inference at all: this is a
-_failure to reason about computation_. 
-
-I don't want to pick on anyone individually. But there seems to be a recent
-trend of papers that start with a basic RNN, observe that it can't solve some
-simple algorithmic or reasoning problem, and conclude that some crazy new
-architecture is necessary&mdash;when often it would have been enough to let the
-RNN run for more steps, or make a minor change to kind of recurrent unit used.
-I think people get in the habit of saying "everything is a function
-approximator, and all function approximators are basically comparable". Whereas
-if we say "everything is a program", these fair comparison issues become more
-complicated: we have to start worrying about equal runtimes, availability of the
-right floating point operations, etc. But when building inference procedures,
-these are exactly the things we should worry most about!
-
-***
-
--->
-
-<p>Let’s look at this experimentally. (Code for
-this section can be found in the accompanying <a href="https://github.com/jacobandreas/blog/blob/gh-pages/notebooks/monference.ipynb">Jupyter
-notebook</a>.)</p>
-
-<p>If we think about the classical inference procedure with the same structure as a
-(uni-directional) recurrent neural network, it’s something like this: for <script type="math/tex">t =
-0..n</script>, receive an emission <script type="math/tex">x_t</script> from the HMM, and <em>immediately</em> predict a
-hidden state <script type="math/tex">y_t</script>. You should be able to convince yourself that if we’re
-evaluated on tagging accuracy, the min-risk monference (if HMM parameters are
-known) is to run the forward algorithm, and predict the tag with maximum
-marginal probability at each time <script type="math/tex">t</script>.</p>
-
-<p>I generated a random HMM, drew a bunch of sequences from it, and
-applied this min-risk classical procedure. I obtained the following
-“online tagging” accuracy:</p>
-
-<figure class="highlight"><pre><code class="language-text" data-lang="text">62.8</code></pre></figure>
-
-<p>Another totally acceptable (though somewhat more labor-intensive) way of
-producing a monference for this online tagging problem is to take the HMM, draw
-many more samples from it, and use the (observed, hidden) sequences as training
-data (x, y) for a vanilla RNN of the following form:</p>
-
-<p><img src="figures/monference_rnn.png" style="width: 300px; max-width: 100%" /></p>
-
-<p>(where each arrow is an inner product followed by a ReLU or log-loss). In this
-case I obtained the following accuracy:</p>
-
-<figure class="highlight"><pre><code class="language-text" data-lang="text">62.8</code></pre></figure>
-
-<p>Is it just a coincidence that these scores are the same? Let’s look at some
-predictions:</p>
-
-<figure class="highlight"><pre><code class="language-text" data-lang="text">true hidden sequence: 1 0 0 1 0
-classical monference: 1 0 1 1 0
-neural monference:    1 0 1 1 0
-
-true hidden sequence: 1 0 1 2 0
-classical monference: 1 0 1 0 0
-neural monference:    1 0 1 0 0</code></pre></figure>
-
-<p>So even when our two monferences are wrong, they’re wrong in the same way.</p>
-
-<p>Of course, we know that we can get slightly better results for this problem by
-running the full forward-backward algorithm, and again making max-marginal
-predictions. This improved classical procedure gave an accuracy of:</p>
-
-<figure class="highlight"><pre><code class="language-text" data-lang="text">63.3</code></pre></figure>
-
-<p>better than either of the online models, as expected. Training a bidirectional
-recurrent net</p>
-
-<p><img src="figures/monference_bdrnn.png" style="width: 300px; max-width: 100%" /></p>
-
-<p>on samples from the HMM gave a tagging accuracy of:</p>
-
-<figure class="highlight"><pre><code class="language-text" data-lang="text">63.3</code></pre></figure>
-
-<p>A sample prediction:</p>
-
-<figure class="highlight"><pre><code class="language-text" data-lang="text">true hidden sequence: 0 1 0 0 1
-classical monference: 0 1 0 0 1
-neural monference:    0 1 0 0 1</code></pre></figure>
-
-<p>Notice: the neural nets we’ve used here don’t encode anything
-about classical message-passing rules, and they definitely don’t encode anything
-about the generative process underlying an HMM. Yet in both cases, the neural
-net managed to achieve accuracy as good as (but no better than) the classical
-message passing procedure with the same structure. Indeed, this neural training
-procedure results in a piece of code that makes identical predictions to the
-forward–backward algorithm, but it doesn’t know anything about the
-forward–backward algorithm!</p>
-
-<hr />
-
-<p>Neural networks are not magic—when our data is actually generated from an HMM,
-we can’t hope to beat an (information-theoretically optimal) classical
-monference with a neural one. But we can empirically do just as well. 
-As we augment neural architectures to match the <em>algorithmic structure</em> of more
-powerful classical inference procedures, their performance improves.
-Bidirectional recurrent nets are better than forward-only ones; bidirectional
-networks with <a href="http://arxiv.org/abs/1602.08210">multiple layers between each “real” hidden
-vector</a> might be even better for some tasks.</p>
-
-<p>Better yet, we can perhaps worry less about harder cases, when we previously
-would have needed to hand-tune some approximate inference scheme. (One example:
-suppose our transition matrix is a huge permutation. It might be very expensive
-to do repeated multiplications for classical inference, and trying to take a
-low-rank approximation to the transition matrix will lose information. But a
-neural monference can potentially represent our model dynamics quite
-compactly.)</p>
-
-<p>So far we’ve been looking at sequences, but analogues for more structured data
-exist as well. For tree-shaped problems, we can run something that looks like
-the <a href="http://www.socher.org/uploads/Main/SocherBauerManningNg_ACL2013.pdf">inside algorithm over a fixed
-tree</a> or
-the <a href="https://aclweb.org/anthology/D/D15/D15-1137.pdf">inside–outside algorithm over a whole sparsified parse
-chart</a>.  For arbitrary graphs,
-we can apply repeated <a href="http://arxiv.org/pdf/1509.09292.pdf">“graph
-convolutions”</a> that start to look a lot
-like belief propagation.</p>
-
-<p>There’s a general principle here: anywhere you have an inference algorithm that
-maintains a distribution over discrete states, instead:</p>
-
-<ol>
-  <li>replace {chart cells, discrete distributions} with vectors</li>
-  <li>replace messages between cells with recurrent networks</li>
-  <li>unroll the “inference” procedure for a suitable number of iterations</li>
-  <li>train via backpropagation</li>
-</ol>
-
-<p>The resulting monference has at least as much capacity as the corresponding
-classical procedure. To the extent that appproximation is necessary, we can (at
-least empirically) <em>learn</em> the right approximation end-to-end from the training
-data.</p>
-
-<p>(The version of this that backpropagates through an approximate inference
-procedure, but doesn’t attempt to learn the inference function itself, has <a href="http://cs.jhu.edu/~jason/papers/#stoyanov-ropson-eisner-2011">been
-around</a>
-for <a href="http://www.cs.cmu.edu/~mgormley/papers/gormley+dredze+eisner.tacl.2015.pdf">a while</a>.)</p>
-
-<p>I think there’s at least one more constituency parsing paper to be written
-using all the pieces of this framework, and lots more for working with
-graph-structured data.</p>
-
-<hr />
-
-<p>I’ve argued that the monference perspective is useful, but is it true? That is,
-is there a precise sense in which a neural net is <em>really</em> a monference, and not
-a model?</p>
-
-<p>No. There’s a fundamental identifiability problem—we can’t really distinguish
-between “fancy model with trivial inference” and “mystery model with complicated
-inference”. Thus it also makes no sense to ask, given a trained neural network,
-which model it performs inference for. (On the other hand, networks trained via
-<a href="http://arxiv.org/abs/1503.02531">distillation</a> seem like good candidates for
-“same model, different monference”.) And the networks-as-<em>models</em> perspective
-shouldn’t be completely ignored: it’s resulted in a fruitful line of work that
-replaces log-linear potentials with neural networks <a href="http://www.eecs.berkeley.edu/~gdurrett/papers/durrett-klein-acl2015.pdf">inside
-CRFs</a>.
-(Though one of the usual selling points of these methods is that “you get to
-keep your dynamic program”, which we’ve argued here is true of suitably
-organized recurrent networks as well.)</p>
-
-<p>In spite of all this, as research focus in this corner of the machine learning
-community shifts towards <a href="http://nips2015.sched.org/event/4G4h/reasoning-attention-memory-ram-workshop">planning, reasoning, and harder algorithmic
-problems</a>,
-I think the neural-nets-as-monferences perspective should dominate.</p>
-
-<p>More than that—when we look back on the “deep learning revolution” ten years
-from now, I think the real lesson will be the importance of end-to-end training
-of decoders and reasoning procedures, even in systems that <a href="http://arxiv.org/abs/1601.01705">barely
-look
-like neural networks at all</a>. So when building
-learning systems, don’t ask: “what is the probabilistic relationship among my
-variables?”. Instead ask: “how do I approximate the inference function for my
-problem?”, and attempt to learn this approximation directly. To do this
-effectively, we can use everything we know about classical inference procedures.
-But we should also start thinking of inference as a first-class part of the
-learning problem.</p>
-
-<hr />
-
-<p>Thanks to Matt Gormley (whose EMNLP talk got me thinking about these issues), and
-Robert Nishihara and Greg Durrett for feedback.</p>
-
-<p>Also Jason Eisner for this gem: “An awful portmanteau, since monference should be a count 
-noun like model, but you took the suffix from the mass noun.  Not that I can claim that infedel 
-is much better…”</p>
-
-  </article>
+      </article>
 
   
-    <div id="disqus_thread"></div>
-<script type="text/javascript">
-    /* * * CONFIGURATION VARIABLES * * */
-    var disqus_shortname = 'jacobandreas-blog';
-    
-    /* * * DON'T EDIT BELOW THIS LINE * * */
-    (function() {
-        var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
-        dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
-        (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
-    })();
-</script>
-<noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript" rel="nofollow">comments powered by Disqus.</a></noscript>
-
-  
-
+  <div id="disqus_thread"></div>
+  <script>
+  var disqus_shortname = 'ybe-blog';
+  var disqus_identifier = 'static-parameter';
+      
+      /* * * DON'T EDIT BELOW THIS LINE * * */
+      (function() {
+          var dsq = document.createElement('script'); dsq.type = 'text/javascript'; dsq.async = true;
+          dsq.src = '//' + disqus_shortname + '.disqus.com/embed.js';
+          (document.getElementsByTagName('head')[0] || document.getElementsByTagName('body')[0]).appendChild(dsq);
+      })();
+  </script>
+  <noscript>Please enable JavaScript to view the <a href="https://disqus.com/?ref_noscript">comments powered by Disqus.</a></noscript>
+                                 
 </div>
 
 
