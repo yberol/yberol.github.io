@@ -58,6 +58,12 @@
 				<section>
 					<h3> Joint State and Parameter Estimation </h3>	
 					<img src="images/dbn.png" alt="dbn">
+					$$
+					\begin{eqnarray}
+						x_t &\sim& p(x_t \mid x_{t-1},\theta) \\
+						y_t &\sim& p(y_t \mid x_t,\theta)
+					\end{eqnarray}
+					$$
 					<p><b>Goal</b>: A black-box online algorithm that can represent $p(\theta,x_{0:t} \mid y_{0:t})$ efficiently and accurately for arbitrary temporal models. </p>
 				</section> 
 
